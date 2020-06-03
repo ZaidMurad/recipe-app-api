@@ -34,6 +34,5 @@ class ModelTests(TestCase):
             'test@gmail.com',
             '123456'
         )
-
         self.assertTrue(user.is_superuser)
         self.assertTrue(user.is_staff)
