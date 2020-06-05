@@ -9,4 +9,30 @@ services:
     volumes:
       - ./app:/app
     command: >
-      sh -c "python manage.py runserver 0.0.0.0:8000"
+      sh -c "python manage.py wait_for_db &&
+             python manage.py migrate &&
+             python manage.py runserver 0.0.0.0:8000"
+    # we should modify the app service after creating the db service to depend on it
+    environment:
+      - DB_HOST=db
+      # this has to match the name of the service that runs the db as defined below
+      - DB_NAME=app
+      # this should match the name defined below in POSTGRES_DB in db servicr
+      - DB_USER=postgres
+      # it should also match the db service
+      - DB_PASS=supersecretpassword
+      # same
+    depends_on:
+      - db
+    # this implies that the db service will start before the app service
+    # and the db service will be available via the network when you use the hostname db inside the app service
+  # we will next create a new service called db
+  db:
+    image: postgres:10-alpine
+    # this locates the postgres image on docker hub and it pulls down the version with tag 10-alpine
+    environment:
+    # set environment variables. we will setup variables for name, user, password which are created when the db service starts
+      - POSTGRES_DB=app
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=supersecretpassword
+      # this password is insecure, it should be overriden later when published online

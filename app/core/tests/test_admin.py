@@ -17,7 +17,7 @@ class AdminSiteTests(TestCase):
             email = 'test@gmail.com',
             password = '123456',
             name = 'Test Name',
-        ) # create a user that is not authenticated to list in the admin page
+        ) # create a user that is not authenticated to list in the admin page for testing
 
     def test_users_listed(self):
         """Test that users are listed on user page"""
