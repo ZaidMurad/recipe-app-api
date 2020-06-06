@@ -15,6 +15,18 @@ class UserSerializer(serializers.ModelSerializer): # since we are basing our ser
 
         return get_user_model().objects.create_user(**validated_data) # validated data is a dict so here we unwind it
 
+    def update(self, instance, validated_data): # instance is the model(user model) instance.
+        """Update a user setting the password correctly and return it"""
+        password = validated_data.pop('password', None) # None is a default value.
+        user = super().update(instance, validated_data)
+
+        if password:
+            user.set_password(password)
+            user.save()
+
+        return user
+        
+
 class AuthTokenSerializer(serializers.Serializer):
     """Serializer for the user authentication object"""
     email = serializers.CharField()

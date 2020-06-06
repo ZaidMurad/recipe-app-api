@@ -7,6 +7,7 @@ from rest_framework import status # to generate status codes
 
 CREATE_USER_URL = reverse('user:create') # since we will use it a lot. this will create the user create url
 TOKEN_URL = reverse('user:token')
+ME_URL = reverse('user:me') # the account of the user whos authenticated
 
 def create_user(**params): # (**params) is a dynamic list of args, it can take as much args as we want, which are passed directly to create_user model so we have a lot of flexibility
     return get_user_model().objects.create_user(**params)
@@ -78,7 +79,7 @@ class PublicUserApiTests(TestCase): # a public API is one thats unauthenticated 
     def test_create_token_invalid_credentials(self):
         """Test that token is not created if invalid credentials given"""
         create_user( email = 'test@gmail.com', password = '123456')
-        payload = { 'email': 'test"gmail.com', 'password': 'wrongpass'}
+        payload = { 'email': 'test@gmail.com', 'password': 'wrongpass'}
         res = self.client.post(TOKEN_URL, payload)
 
         self.assertNotIn('token', res.data)
@@ -86,7 +87,7 @@ class PublicUserApiTests(TestCase): # a public API is one thats unauthenticated 
 
     def test_create_token_no_user(self):
         """Test that token is not created if user does not exist"""
-        payload = { 'email': 'test"gmail.com', 'password': '123456'}
+        payload = { 'email': 'test@gmail.com', 'password': '123456'}
         res = self.client.post(TOKEN_URL, payload)
 
         self.assertNotIn('token', res.data)
@@ -98,3 +99,50 @@ class PublicUserApiTests(TestCase): # a public API is one thats unauthenticated 
 
         self.assertNotIn('token', res.data)
         self.assertEqual(res.status_code, status.HTTP_400_BAD_REQUEST)
+
+    ###########################################################################
+
+    def test_retrieve_user_unauthorized(self):
+        """Test that authentication is required for users"""
+        res = self.client.get(ME_URL)
+
+        self.assertEqual(res.status_code, status.HTTP_401_UNAUTHORIZED)
+
+
+class PrivateUserApiTests(TestCase):
+    """Test API requests that require authentication"""
+
+    def setUp(self):
+        self.user = create_user(
+            email = 'test@gmail.com',
+            password = '123456',
+            name = 'Test Name',
+        )
+        self.client = APIClient()
+        self.client.force_authenticate(user=self.user) # used to authenticate any request that our client make with our sample user
+
+    def test_retrieve_profile_success(self):
+        """Test retrieving profile for logged in user"""
+        res = self.client.get(ME_URL)
+
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        self.assertEqual(res.data, {
+            'name': self.user.name,
+            'email': self.user.email,
+        }) # we dont want the pass to be returned even if its hashed
+
+    def test_post_me_not_allowed(self):
+        """Test that post is not allowed on the me url"""
+        res = self.client.post(ME_URL, {})
+
+        self.assertEqual(res.status_code, status.HTTP_405_METHOD_NOT_ALLOWED)
+
+    def test_update_user_profile(self):
+        """Test updating the user profile for authenticated user"""
+        payload = {'name': 'new name', 'password': 'passywordy'} # anything different from the user created in the setup method
+        res = self.client.patch(ME_URL, payload)
+
+        self.user.refresh_from_db() # used to update the user with the latest values from db
+        self.assertEqual(self.user.name, payload['name'])
+        self.assertTrue(self.user.check_password(payload['password']))
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
