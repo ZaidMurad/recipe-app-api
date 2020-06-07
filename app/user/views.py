@@ -21,8 +21,8 @@ class ManageUserView(generics.RetrieveUpdateAPIView):
     """Manage the authenticated user"""
     serializer_class = UserSerializer
     authentication_classes = (authentication.TokenAuthentication,)
-    permission_classes = (permissions.IsAuthenticated,)
+    permission_classes = (permissions.IsAuthenticated,) # to specify the level of access the user has. here the user must be authenticated to use the API
 
-    def get_object(self): # used to get the model for the authenticated user
+    def get_object(self): # used to get the model for the authenticated (loggen in) user. we are overriding the default method which returns an object which is an instance of your model
         """Retrieve and return the authenticated user"""
-        return self.request.user
+        return self.request.user # the authentication class takes care of assigning the user to the request

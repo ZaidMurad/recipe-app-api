@@ -129,11 +129,11 @@ class PrivateUserApiTests(TestCase):
         self.assertEqual(res.data, {
             'name': self.user.name,
             'email': self.user.email,
-        }) # we dont want the pass to be returned even if its hashed
+        }) # since we dont want the pass to be returned even if its hashed, we cannot use it here
 
     def test_post_me_not_allowed(self):
         """Test that post is not allowed on the me url"""
-        res = self.client.post(ME_URL, {})
+        res = self.client.post(ME_URL, {}) # testing posting an empty object
 
         self.assertEqual(res.status_code, status.HTTP_405_METHOD_NOT_ALLOWED)
 

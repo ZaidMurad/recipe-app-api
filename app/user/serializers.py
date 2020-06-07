@@ -15,17 +15,17 @@ class UserSerializer(serializers.ModelSerializer): # since we are basing our ser
 
         return get_user_model().objects.create_user(**validated_data) # validated data is a dict so here we unwind it
 
-    def update(self, instance, validated_data): # instance is the model(user model) instance.
+    def update(self, instance, validated_data): # instance is the model (user model) instance.
         """Update a user setting the password correctly and return it"""
-        password = validated_data.pop('password', None) # None is a default value.
-        user = super().update(instance, validated_data)
+        password = validated_data.pop('password', None) # here we remove the password from validated_data and return it. None is provided as a default value for the pass if it does not exist (since we want providing the password here to be optional).
+        user = super().update(instance, validated_data) # to update the rest of our data (except pass) by calling the default update function
 
         if password:
             user.set_password(password)
             user.save()
 
         return user
-        
+
 
 class AuthTokenSerializer(serializers.Serializer):
     """Serializer for the user authentication object"""
