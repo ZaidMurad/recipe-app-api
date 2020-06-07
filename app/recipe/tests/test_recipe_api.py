@@ -5,13 +5,27 @@ from django.urls import reverse
 from rest_framework import status
 from rest_framework.test import APIClient
 
-from core.models import Recipe
+from core.models import Recipe, Tag, Ingredient
 
-from recipe.serializers import RecipeSerializer
+from recipe.serializers import RecipeSerializer, RecipeDetailSerializer
 
 
-RECIPE_URL = reverse('recipe:recipe-list')
+RECIPE_URL = reverse('recipe:recipe-list') # /api/recipe/recipes
 
+
+def detail_url(recipe_id): # /api/recipe/recipes/ID
+    """Return recipe detail url"""
+    return reverse('recipe:recipe-detail', args = [recipe_id])
+
+
+def sample_tag(user, name = 'Main Course'): # no need to use **params here since we have only 2 arguments
+    """Create and return a sample tag"""
+    return Tag.objects.create(user=user, name=name)
+
+
+def sample_ingredient(user, name = 'Cinnamon'):
+    """Create and return a sample ingredient"""
+    return Ingredient.objects.create(user=user, name=name)
 
 def sample_recipe(user, **params): # the ** means that any extra arguments passed in other than user will be passed into a dict called params
     """Create and return a sample recipe"""
@@ -79,3 +93,15 @@ class PrivateRecipeApiTests(TestCase):
         self.assertEqual(res.status_code, status.HTTP_200_OK)
         self.assertEqual(len(res.data), 1)
         self.assertEqual(res.data, serializer.data)
+
+    def test_view_recipe_detail(self):
+        """Test Viewing a recipe detail"""
+        recipe = sample_recipe(user = self.user)
+        recipe.tags.add(sample_tag(user=self.user)) # This is how u add an item on a ManytoMany field
+        recipe.ingredients.add(sample_ingredient(user=self.user))
+
+        url = detail_url(recipe.id)
+        res = self.client.get(url)
+
+        serializer = RecipeDetailSerializer(recipe) # since this is not a list function, we dont need many=true
+        self.assertEqual(res.data, serializer.data) # test that the response is serialized

@@ -27,7 +27,7 @@ class RecipeSerializer(serializers.ModelSerializer):
     ingredients = serializers.PrimaryKeyRelatedField(
         many = True, # allow many ingredient
         queryset = Ingredient.objects.all(),
-    ) # this lists the ingredients with their IDs
+    ) # this lists the ingredients with their IDs only since we used (PrimaryKeyRelatedField)
     tags = serializers.PrimaryKeyRelatedField(
         many = True,
         queryset = Tag.objects.all(),
@@ -40,3 +40,9 @@ class RecipeSerializer(serializers.ModelSerializer):
             'price', 'link',
         )
         read_only_fields = ('id',)
+
+
+class RecipeDetailSerializer(RecipeSerializer):
+    """Serialize a recipe detail"""
+    ingredients = IngredientSerializer(many=True, read_only=True) # many=True means that we can have more than 1 ingredient for a recipe
+    tags = TagSerializer(many=True, read_only=True)

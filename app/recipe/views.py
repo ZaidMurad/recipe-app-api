@@ -3,7 +3,7 @@ from rest_framework.authentication import TokenAuthentication
 from rest_framework.permissions import IsAuthenticated
 
 from core.models import Tag, Ingredient, Recipe
-from .serializers import TagSerializer, IngredientSerializer, RecipeSerializer
+from . import serializers
 
 
 class BaseRecipeAttrViewSet(viewsets.GenericViewSet,
@@ -25,22 +25,29 @@ class BaseRecipeAttrViewSet(viewsets.GenericViewSet,
 class TagViewSet(BaseRecipeAttrViewSet):
     """Manage tags in the database"""
     queryset = Tag.objects.all()
-    serializer_class = TagSerializer
+    serializer_class = serializers.TagSerializer
 
 
 class IngredientViewSet(BaseRecipeAttrViewSet):
     """Manage ingredients in the database"""
     queryset = Ingredient.objects.all()
-    serializer_class = IngredientSerializer
+    serializer_class = serializers.IngredientSerializer
 
 
 class RecipeViewSet(viewsets.ModelViewSet): # we used modelviewset because we want to use all functionality (not just list and create)
     """Manage recipes in the database"""
-    serializer_class = RecipeSerializer
+    serializer_class = serializers.RecipeSerializer
     queryset = Recipe.objects.all()
     authentication_classes = (TokenAuthentication,)
     permission_classes = (IsAuthenticated,)
 
     def get_queryset(self):
-        """Retrieve the recipe for the authenticated user"""
+        """Retrieve the recipe for the authenticated user only"""
         return self.queryset.filter(user = self.request.user)
+
+    def get_serializer_class(self): # This is the function thats called to retrieve the serializer class for a request. we override it to change the serializer class for the different actions available in the viewset
+        """Return appropriate serializer class"""
+        if self.action == 'retrieve':
+            return serializers.RecipeDetailSerializer
+
+        return self.serializer_class
