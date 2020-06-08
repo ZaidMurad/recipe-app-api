@@ -27,14 +27,15 @@ def sample_ingredient(user, name = 'Cinnamon'):
     """Create and return a sample ingredient"""
     return Ingredient.objects.create(user=user, name=name)
 
-def sample_recipe(user, **params): # the ** means that any extra arguments passed in other than user will be passed into a dict called params
+
+def sample_recipe(user, **params): # the ** means that any extra key-word arguments passed in other than user will be passed into a dict called params
     """Create and return a sample recipe"""
     defaults = {
         'title': 'Sample recipe',
         'time_minutes': 10,
         'price': 5.00,
     }
-    defaults.update(params) # update here accepts a dictionary object. any parameter passed in will override the defaults if it exists, or will be added if it does not exist
+    defaults.update(params) # update here is a method for dicts that accepts a dictionary object. any parameter passed in will override the defaults if it exists, or will be added if it does not exist
 
     return Recipe.objects.create(user=user, **defaults) # this will do the opposite and unwind the dictionary into the arguments
 
@@ -71,7 +72,7 @@ class PrivateRecipeApiTests(TestCase):
         res = self.client.get(RECIPE_URL)
 
         recipes = Recipe.objects.all().order_by('-id')
-        serializer = RecipeSerializer(recipes, many=True)
+        serializer = RecipeSerializer(recipes, many=True) # many=true returns the data as a list
 
         self.assertEqual(res.status_code, status.HTTP_200_OK)
         self.assertEqual(res.data, serializer.data)
@@ -97,7 +98,7 @@ class PrivateRecipeApiTests(TestCase):
     def test_view_recipe_detail(self):
         """Test Viewing a recipe detail"""
         recipe = sample_recipe(user = self.user)
-        recipe.tags.add(sample_tag(user=self.user)) # This is how u add an item on a ManytoMany field
+        recipe.tags.add(sample_tag(user=self.user)) # This is how u add an item on a ManytoManyField
         recipe.ingredients.add(sample_ingredient(user=self.user))
 
         url = detail_url(recipe.id)
@@ -105,3 +106,58 @@ class PrivateRecipeApiTests(TestCase):
 
         serializer = RecipeDetailSerializer(recipe) # since this is not a list function, we dont need many=true
         self.assertEqual(res.data, serializer.data) # test that the response is serialized
+
+    def test_create_basic_recipe(self):
+        """Test creating recipe"""
+        payload = {
+            'title': 'Chocolate Cheesecake',
+            'time_minutes': 30,
+            'price': 5.00
+        } # minimum fields requried
+        res = self.client.post(RECIPE_URL, payload)
+
+        self.assertEqual(res.status_code, status.HTTP_201_CREATED)
+        recipe = Recipe.objects.get(id=res.data['id']) # retrive the recipe created in the API from our db(models) by specifying its own id
+
+        for key in payload.keys(): # loop through each key in the dict
+            self.assertEqual(payload[key], getattr(recipe, key)) # getattr allows you to retrieve an attribute from an object by passing in a variable. you cannot just use recipe.key wince that will search for a key called 'key' in recipe
+
+    def test_create_recipe_with_tags(self):
+        """Test creating a recipe with tags"""
+        tag1 = sample_tag(user=self.user, name = 'Vegan')
+        tag2 = sample_tag(user=self.user, name = 'Dessert')
+        payload = {
+            'title': 'Avocado lime Cheesecake',
+            'tags': [tag1.id, tag2.id], # this is how tags are assigned
+            'time_minutes': 20,
+            'price': 20.00,
+        }
+        res = self.client.post(RECIPE_URL, payload)
+
+        self.assertEqual(res.status_code, status.HTTP_201_CREATED)
+        recipe = Recipe.objects.get(id=res.data['id'])
+        tags = recipe.tags.all()
+
+        self.assertEqual(tags.count(), 2)
+        self.assertIn(tag1, tags)
+        self.assertIn(tag2, tags)
+
+    def test_create_recipe_with_ingredients(self):
+        """Test creating recipe with ingredients"""
+        ingredient1 = sample_ingredient(user=self.user, name = 'bla')
+        ingredient2 = sample_ingredient(user=self.user, name = 'blaa')
+        payload = {
+            'title': 'red curry',
+            'ingredients': [ingredient1.id, ingredient2.id],
+            'time_minutes': 30,
+            'price': 30.00
+        }
+        res = self.client.post(RECIPE_URL, payload)
+
+        self.assertEqual(res.status_code, status.HTTP_201_CREATED)
+        recipe = Recipe.objects.get(id=res.data['id'])
+        ingredients = recipe.ingredients.all()
+
+        self.assertEqual(ingredients.count(), 2)
+        self.assertIn(ingredient1, ingredients)
+        self.assertIn(ingredient2, ingredients)

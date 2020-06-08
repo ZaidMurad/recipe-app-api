@@ -47,7 +47,11 @@ class RecipeViewSet(viewsets.ModelViewSet): # we used modelviewset because we wa
 
     def get_serializer_class(self): # This is the function thats called to retrieve the serializer class for a request. we override it to change the serializer class for the different actions available in the viewset
         """Return appropriate serializer class"""
-        if self.action == 'retrieve':
+        if self.action == 'retrieve': # retrieve represents detailed view
             return serializers.RecipeDetailSerializer
 
         return self.serializer_class
+
+    def perform_create(self, serializer): # assigns the user for the recipe to the current authenticated user
+        """Create a new recipe for the authenticated user"""
+        serializer.save(user = self.request.user)

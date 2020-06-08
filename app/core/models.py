@@ -71,9 +71,9 @@ class Recipe(models.Model):
     title = models.CharField(max_length=255)
     time_minutes = models.IntegerField()
     price = models.DecimalField(max_digits=5, decimal_places=2)
-    link = models.CharField(max_length=255, blank=True)# the recommended strategy to make it optional is blank=True (if no link is provided set it to blank string). the user can add a link to the recipe
+    link = models.CharField(max_length=255, blank=True)# the recommended strategy to make it optional is blank=True (if no link is provided set it to blank string). the user can add a link to the recipe optionally
     ingredients = models.ManyToManyField('Ingredient') # A type of foreign keys
-    tags = models.ManyToManyField('Tag')
+    tags = models.ManyToManyField('Tag') # without the quotes around model name(tag), the models should be defined in correct order. So we put them to ignore this issue
 
     def __str__(self):
         return self.title
