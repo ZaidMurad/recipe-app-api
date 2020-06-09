@@ -1,3 +1,5 @@
+from unittest.mock import patch # we used this in test_commands file too
+
 from django.test import TestCase
 from django.contrib.auth import get_user_model # u can import the user model directly from the models but thats not recommended because that might change, so its better to get it from the settings file directly
 
@@ -70,3 +72,13 @@ class ModelTests(TestCase):
         )
 
         self.assertEqual(str(recipe), recipe.title)
+
+    @patch('uuid.uuid4') # the argument is the function we wanna mock.
+    def test_recipe_file_name_uuid(self, mock_uuid): # the second argument is sent by the patch decorator
+        """Test that image is saved in the correct location"""
+        uuid = 'test-uuid' # set the uuid to a fixed string
+        mock_uuid.return_value = uuid # any time we call uuid4 function in our tests, it will override the default behaviour and return our string instead
+        file_path = models.recipe_image_file_path(None, 'myimage.jpg') # we dont need to provide the instance(1st arg) here so we just pass None, the second argument is the file name for the original file being added (uploaded by user)
+
+        expected_path = f'uploads/recipe/{uuid}.jpg' # uuid.jpg is the new name assigned to the file after its uploaded
+        self.assertEqual(file_path, expected_path)

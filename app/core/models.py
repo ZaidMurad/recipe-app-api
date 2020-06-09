@@ -1,7 +1,18 @@
+import uuid # used to create the name to uniquely identify the image that we assign to the image field
+import os # used to create a valid path for our file destination
 from django.db import models
 from django.contrib.auth.models import AbstractBaseUser, BaseUserManager, \
                                         PermissionsMixin
 from django.conf import settings
+
+
+def recipe_image_file_path(instance, file_name): # A function to create the path to the image on our system, and generate the name for the image on the system after its uploaded
+    """generate file path for new recipe image""" # instance is the instance that is creating the path, file_name is the name of the original file uploaded
+    ext = file_name.split('.')[-1] # [-1] means return the last item of the list. here we want to extract the file extension (jpg)
+    filename = f'{uuid.uuid4()}.{ext}' # you can call functions in f strings
+
+    return os.path.join('uploads/recipe/', filename) # this allows you to join to strings to make a valid path, if the path is invalid it will return an error
+
 
 class UserManager(BaseUserManager):
 
@@ -74,6 +85,7 @@ class Recipe(models.Model):
     link = models.CharField(max_length=255, blank=True)# the recommended strategy to make it optional is blank=True (if no link is provided set it to blank string). the user can add a link to the recipe optionally
     ingredients = models.ManyToManyField('Ingredient') # A type of foreign keys
     tags = models.ManyToManyField('Tag') # without the quotes around model name(tag), the models should be defined in correct order. So we put them to ignore this issue
-
+    image = models.ImageField(null=True, upload_to = recipe_image_file_path) # null=true to make this field optional. in the 2nd arg, we dont wanna call the function but to pass a reference to it to be called everytime we upload
+    # ImageField validates by default that the uploaded object is a valid image
     def __str__(self):
         return self.title

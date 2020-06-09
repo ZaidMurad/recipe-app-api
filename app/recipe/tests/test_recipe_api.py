@@ -1,3 +1,8 @@
+import tempfile # allows you to generate temporary files and you can then remove it
+import os # to create path name, check if files exists in the system
+
+from PIL import Image # PIL is a pillow requirement. this lets us create test images to upload to our API
+
 from django.contrib.auth import get_user_model
 from django.test import TestCase
 from django.urls import reverse
@@ -11,6 +16,11 @@ from recipe.serializers import RecipeSerializer, RecipeDetailSerializer
 
 
 RECIPE_URL = reverse('recipe:recipe-list') # /api/recipe/recipes
+
+
+def image_upload_url(recipe_id):
+    """return url for recipe image upload"""
+    return reverse('recipe:recipe-upload-image', args = [recipe_id]) # upload-image is the path sepcified in views file
 
 
 def detail_url(recipe_id): # /api/recipe/recipes/ID
@@ -197,3 +207,40 @@ class PrivateRecipeApiTests(TestCase):
         self.assertEqual(recipe.price, payload['price'])
         tags = recipe.tags.all()
         self.assertEqual(len(tags), 0)
+
+
+class RecipeImageUploadTests(TestCase):
+
+    def setUp(self):
+        self.client = APIClient()
+        self.user = get_user_model().objects.create_user(
+            email = 'user@test.com',
+            password = 'testpass',
+        )
+        self.client.force_authenticate(self.user)
+        self.recipe = sample_recipe(user=self.user)
+
+    def tearDown(self): # runs after all the tests. we use this to clean-up our system after our tests by removing all tests files
+        self.recipe.image.delete()
+
+    def test_upload_image_to_recipe(self):
+        """Test uploading an image to recipe"""
+        url = image_upload_url(self.recipe.id)
+        # we will create a temp file, write an image to it, then upload that file through the API endpoint
+        with tempfile.NamedTemporaryFile(suffix = '.jpg') as ntf: # create a file in the system that we can write to (in a random location usually in /tempfolder). suffix is actually the extension
+            img = Image.new('RGB', (10,10)) # create a black square image (10 pixels * 10 pixels) - we want a very small image -
+            img.save(ntf, format = 'JPEG') # save the image to our NamedTemporaryFile
+            ntf.seek(0) # since we save the file, the seeking (pointer) is at the end of file (if you try to access it it will appear blank), so here we set the pointer back to the beginning
+            res = self.client.post(url, {'image': ntf}, format = 'multipart') # our serializer only takes image. format arg to tell django we wanna make a multipart form request (a form that consists of data instead of default JSON object)
+
+        self.recipe.refresh_from_db()
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        self.assertIn('image', res.data)
+        self.assertTrue(os.path.exists(self.recipe.image.path)) # check that the path exists for the image in our file system
+
+    def test_upload_image_bad_request(self):
+        """Test uploading an invalid image"""
+        url = image_upload_url(self.recipe.id)
+        res = self.client.post(url, {'image': 'notimage'}, format = 'multipart')
+
+        self.assertEqual(res.status_code, status.HTTP_400_BAD_REQUEST)

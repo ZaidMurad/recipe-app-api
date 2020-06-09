@@ -1,4 +1,7 @@
-from rest_framework import viewsets, mixins
+from rest_framework.decorators import action # used to add custom actions to viewsets
+from rest_framework.response import Response
+
+from rest_framework import viewsets, mixins, status
 from rest_framework.authentication import TokenAuthentication
 from rest_framework.permissions import IsAuthenticated
 
@@ -49,9 +52,33 @@ class RecipeViewSet(viewsets.ModelViewSet): # we used modelviewset because we wa
         """Return appropriate serializer class"""
         if self.action == 'retrieve': # retrieve represents detailed view
             return serializers.RecipeDetailSerializer
+        elif self.action == 'upload_image':
+            return serializers.RecipeImageSerializer
 
         return self.serializer_class
 
     def perform_create(self, serializer): # assigns the user for the recipe to the current authenticated user
         """Create a new recipe for the authenticated user"""
         serializer.save(user = self.request.user)
+
+    # the above methods are all default methods that we are overriding, unlike the custom action we define below
+    @action(methods = ['POST'], detail = True, url_path = 'upload-image') # detail=true is used to make the action intended for a single object(true) or a collection(false). so here we need to use the pk in url for detailed view
+    def upload_image(self, request, pk=None):
+        """Upload an image to a recipe"""
+        recipe = self.get_object() # retrieve the recipe object being accessed based on the id(pk)
+        serializer = self.get_serializer( # this is a helper function that calls get_serializer_class function within its code and return a serializer instance. we can put the serializer directly here but this is not the recommended way
+            recipe, # object we are updating to upload the image to it
+            data = request.data, # data posted to the endpoint
+        )
+
+        if serializer.is_valid(): # validates the data to make sure the image field is correct and no other fields to be provided
+            serializer.save() # allowed by ModelSerializers
+            return Response(
+                serializer.data, # return our image
+                status = status.HTTP_200_OK,
+            )
+
+        return Response( # if serializer is invalid
+            serializer.errors, # return the occured errors
+            status = status.HTTP_400_BAD_REQUEST,
+        )

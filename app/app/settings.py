@@ -125,6 +125,10 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/2.1/howto/static-files/
 
-STATIC_URL = '/static/'
+STATIC_URL = '/static/' # the static files will be served from this path of our webserver (127.0.0.1:8000/static/)
+MEDIA_URL = '/media/' # when we upload media files, we have a url to accress them through our seb server(127.0.0.1:8000/media/)
+
+MEDIA_ROOT = '/vol/web/media' # it simply tells django where to store the media files (we created this file in our dockerfile)
+STATIC_ROOT = '/vol/web/static' # this is where all the static files will be stored (JS and CSS files)
 
 AUTH_USER_MODEL = 'core.User'

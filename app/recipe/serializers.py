@@ -48,3 +48,12 @@ class RecipeDetailSerializer(RecipeSerializer): # re-use the RecipeSerializer ov
     tags = TagSerializer(many=True, read_only=True)
     # here we are using serializers as fields (nested relationships) which will
     # allow us to access all the fields of that serializer for detailed view
+
+
+class RecipeImageSerializer(serializers.ModelSerializer):
+    """Serializer for uploading images to recipes"""
+
+    class Meta:
+        model = Recipe
+        fields = ('id', 'image')
+        read_only_fields = ('id',)
