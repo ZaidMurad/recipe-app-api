@@ -18,7 +18,15 @@ class BaseRecipeAttrViewSet(viewsets.GenericViewSet,
 
     def get_queryset(self): # to filter objects by user currently authenticated. it overrides the default method. when the list function is called from a url, it will call this method to retrieve the objects in the queryset variable (all objects), so we need to filter that to limit it to the authenticated user only (without this our test that makes sure that the tags returned are for the authenticated user only fails)
         """Return objects for the current authenticated user only"""
-        return self.queryset.filter(user = self.request.user).order_by('-name')
+        assigned_only = bool(
+            int(self.request.query_params.get('assigned_only', 0)) # if assigned_only does not return a value, it will be None, which cannot be converted to int, so we need to set a default value for it
+        )
+        queryset = self.queryset
+        if assigned_only:
+            queryset = queryset.filter(recipe__isnull = False) # this will add a filter to eliminate tag/ingredients not assigned to recipes. but if there is duplicates (same tag assigned to two recipes) it will return it twice, so we used distinct() function at the end
+        return queryset.filter(
+            user = self.request.user
+        ).order_by('-name').distinct() # make sure that the queryset returned is unique
 
     def perform_create(self, serializer): # to assign the tag to the authorized user. when we create an object, this function is called and the serializer is passed in
         """Create a new object for the authenticated user"""
@@ -44,9 +52,23 @@ class RecipeViewSet(viewsets.ModelViewSet): # we used modelviewset because we wa
     authentication_classes = (TokenAuthentication,)
     permission_classes = (IsAuthenticated,)
 
+    def _params_to_ints(self, qs): # _ before the name of the function is a common convention for functions intended to be private (we can but wont use it outside this class)
+        """Convert a string IDs to a list of integers"""
+        return [int(str_id) for str_id in qs.split(',')] # '1,2,3' to ['1','2','3'] to [1,2,3]
+
     def get_queryset(self):
         """Retrieve the recipe for the authenticated user only"""
-        return self.queryset.filter(user = self.request.user)
+        tags = self.request.query_params.get('tags') # if we have provided tags as a query string it will be assigned to tags variable, if not this will return None. query_params is a method for request object, which is a dictionary containing all of the query params provided in the request(check tests requests for ref)
+        ingredients = self.request.query_params.get('ingredients') # request.query_params is similar to request.GET but is better to be used
+        queryset = self.queryset #we create this variable to apply the filters to it and return it
+        if tags:
+            tag_ids = self._params_to_ints(tags) # convert to list of ids
+            queryset = queryset.filter(tags__id__in=tag_ids) # django syntax for filtering on foreign key objects. so we have tags field in our recipe queryset, which has a foreinkey to the tags table which has an id, so if u wanna filter by the id in the remote table(Tag) u use '__id'. then 2 more underscores to apply the function 'in'
+        if ingredients:
+            ing_ids = self._params_to_ints(ingredients)
+            queryset = queryset.filter(ingredients__id__in=ing_ids)
+
+        return queryset.filter(user = self.request.user)
 
     def get_serializer_class(self): # This is the function thats called to retrieve the serializer class for a request. we override it to change the serializer class for the different actions available in the viewset
         """Return appropriate serializer class"""

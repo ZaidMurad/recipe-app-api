@@ -5,7 +5,7 @@ from django.test import TestCase
 from rest_framework import status
 from rest_framework.test import APIClient
 
-from core.models import Tag
+from core.models import Tag, Recipe
 
 from recipe.serializers import TagSerializer
 
@@ -83,3 +83,45 @@ class PrivateTagsApiTests(TestCase):
         res = self.client.post(TAGS_URL, payload)
 
         self.assertEqual(res.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_retrieve_tags_assigned_to_recipes(self):
+        """Test filtering tags by those assigned to recipes"""
+        tag1 = Tag.objects.create(user=self.user, name='Breakfast')
+        tag2 = Tag.objects.create(user=self.user, name='lunch')
+        recipe = Recipe.objects.create(
+            user=self.user,
+            title='eggs on toast',
+            time_minutes=20,
+            price=20.00,
+        )
+        recipe.tags.add(tag1)
+
+        res = self.client.get(TAGS_URL, {'assigned_only': 1}) # assigned only is the name of our filter, if you assign it to 1, it will evaluate to True, and it will filter by tags/ingredients assigned to recipes only
+
+        serializer1 = TagSerializer(tag1)
+        serializer2 = TagSerializer(tag2)
+        self.assertIn(serializer1.data, res.data)
+        self.assertNotIn(serializer2.data, res.data)
+
+    def test_retrieve_tags_assigned_unique(self): # if we have two recipes with same tag assigned to both of them, test that the tag is returned once only
+        """Test filtering tags by assigned returns unique items"""
+        tag = Tag.objects.create(user=self.user, name = 'ba7')
+        Tag.objects.create(user=self.user, name = 'lunch') # we add this so that we have more than one tag for our test to make sense
+        recipe1 = Recipe.objects.create(
+            user=self.user,
+            title='whatever',
+            time_minutes = 50,
+            price = 10.00,
+        )
+        recipe2 = Recipe.objects.create(
+            user=self.user,
+            title='another recipe',
+            time_minutes = 40,
+            price = 5.00,
+        )
+        recipe1.tags.add(tag)
+        recipe2.tags.add(tag)
+
+        res = self.client.get(TAGS_URL, {'assigned_only': 1}) # assigned only is the name of our filter, if you assign it to 1, it will evaluate to True, and it will filter by tags/ingredients assigned only
+
+        self.assertEqual(len(res.data), 1)
